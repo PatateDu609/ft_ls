@@ -2,6 +2,7 @@
 #define STRUCTS_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <sys/stat.h>
 #include <dirent.h>
 
@@ -20,7 +21,7 @@ typedef struct
 	bool no_owner : 1;
 	bool dereference : 1;
 	bool inode : 1;
-	bool comma : 1;
+	bool comma : 1; // Not implemented
 	enum
 	{
 		COLOR_ALWAYS = 0b00,
@@ -36,12 +37,21 @@ typedef struct
 {
 	struct stat *s;
 	char *name;
-
-	union
-	{
-		int fd;
-		DIR *d;
-	};
 } entry_t;
+
+typedef struct
+{
+	uint16_t inode;	 // Displayed only if -i is passed.
+	uint16_t blocks; // Displayed only if -s is passed (not implemented yet).
+
+	// Displayed only if -l is passed.
+	uint16_t perms;
+	uint16_t links;
+	uint16_t user;
+	uint16_t group;
+	uint16_t size;
+	uint16_t date;
+	uint16_t name;
+} tab_long_listing_t;
 
 #endif

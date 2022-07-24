@@ -4,9 +4,17 @@
 #include <grp.h>
 #include <time.h>
 
-static int reverse_sort(const char *a, const char *b)
+static inline int reverse_sort(const char *a, const char *b)
 {
 	return (ft_strcmp(b, a));
+}
+
+static int ft_stat_dispatcher(const conf_t *conf, char *path, struct stat *s)
+{
+	if (!conf->dereference)
+		return lstat(path, s);
+	else
+		return stat(path, s);
 }
 
 struct cols
@@ -29,47 +37,61 @@ static size_t get_longest(priority_queue_t *pq)
 
 static void print_perms(mode_t mode)
 {
+	char perms[12];
+	int i = 0;
+
 	if (S_ISDIR(mode))
-		ft_putchar_fd('d', 1);
+		perms[i] = 'd';
 	else if (S_ISLNK(mode))
-		ft_putchar_fd('l', 1);
+		perms[i] = 'l';
 	else if (S_ISCHR(mode))
-		ft_putchar_fd('c', 1);
+		perms[i] = 'c';
 	else if (S_ISBLK(mode))
-		ft_putchar_fd('b', 1);
+		perms[i] = 'b';
 	else if (S_ISFIFO(mode))
-		ft_putchar_fd('p', 1);
+		perms[i] = 'p';
 	else if (S_ISSOCK(mode))
-		ft_putchar_fd('s', 1);
+		perms[i] = 's';
 	else if (S_ISREG(mode))
-		ft_putchar_fd('-', 1);
+		perms[i] = '-';
 	else
-		ft_putchar_fd('?', 1);
+		perms[i] = '?';
 
-	dprintf(1, "%c%c", (mode & S_IRUSR) ? 'r' : '-', (mode & S_IWUSR) ? 'w' : '-');
+	i++;
+
+	perms[i++] = (mode & S_IRUSR) ? 'r' : '-';
+	perms[i++] = (mode & S_IWUSR) ? 'w' : '-';
 	if (mode & S_ISUID)
-		ft_putchar_fd((mode & S_IXUSR) ? 's' : 'S', 1);
+		perms[i++] = (mode & S_IXUSR) ? 's' : 'S';
 	else
-		ft_putchar_fd((mode & S_IXUSR) ? 'x' : '-', 1);
-	dprintf(1, "%c%c", (mode & S_IRGRP) ? 'r' : '-', (mode & S_IWGRP) ? 'w' : '-');
-	if (mode & S_ISGID)
-		ft_putchar_fd((mode & S_IXGRP) ? 's' : 'S', 1);
-	else
-		ft_putchar_fd((mode & S_IXGRP) ? 'x' : '-', 1);
-	dprintf(1, "%c%c", (mode & S_IROTH) ? 'r' : '-', (mode & S_IWOTH) ? 'w' : '-');
-	if (mode & S_ISVTX)
-		ft_putchar_fd((mode & S_IXOTH) ? 't' : 'T', 1);
-	else
-		ft_putchar_fd((mode & S_IXOTH) ? 'x' : '-', 1);
+		perms[i++] = (mode & S_IXUSR) ? 'x' : '-';
 
-	dprintf(1, " ");
+	perms[i++] = (mode & S_IRGRP) ? 'r' : '-';
+	perms[i++] = (mode & S_IWGRP) ? 'w' : '-';
+	if (mode & S_ISGID)
+		perms[i++] = (mode & S_IXGRP) ? 's' : 'S';
+	else
+		perms[i++] = (mode & S_IXGRP) ? 'x' : '-';
+
+	perms[i++] = (mode & S_IROTH) ? 'r' : '-';
+	perms[i++] = (mode & S_IWOTH) ? 'w' : '-';
+	if (mode & S_ISVTX)
+		perms[i++] = (mode & S_IXOTH) ? 't' : 'T';
+	else
+		perms[i++] = (mode & S_IXOTH) ? 'x' : '-';
+	perms[i] = '\0';
+
+	printf("%s ", perms);
 }
 
-static void print_user_group(const struct stat *s)
+static void print_user_group(const conf_t *conf, const struct stat *s)
 {
 	struct passwd *pw = getpwuid(s->st_uid);
 	struct group *gr = getgrgid(s->st_gid);
-	printf("%s %s ", pw->pw_name, gr->gr_name);
+	if (!conf->no_owner)
+		printf("%s ", pw->pw_name);
+	if (!conf->no_group)
+		printf("%s ", gr->gr_name);
 }
 
 static void print_date(struct timespec ts)
@@ -81,25 +103,109 @@ static void print_date(struct timespec ts)
 	printf("%s ", ft_strchr(date, ' ') + 1);
 }
 
+static void get_lnk_path(char *buf, const char *initial_path, const char *link)
+{
+	if (link[0] == '/')
+		sprintf(buf, "%s", link);
+	else
+	{
+		const char *first;
+		char tmp;
+
+		char *basename = ft_strrchr(initial_path, '/');
+		if (!basename)
+			first = ".";
+		else
+		{
+			tmp = basename[0];
+			basename[0] = '\0';
+			first = initial_path;
+		}
+		sprintf(buf, "%s/%s", first, link);
+		if (basename)
+			basename[0] = tmp;
+	}
+}
+
+static void print_colored(const char *name, const char *initial_name, const struct stat *s)
+{
+	if (S_ISLNK(s->st_mode))
+	{
+		int forced = 0;
+		char link[PATH_MAX];
+
+		ssize_t lnk_size = readlink(initial_name, link, PATH_MAX);
+		if (lnk_size == -1)
+		{
+			printf("\n");
+			perror("readlink");
+			return;
+		}
+		else
+		{
+			link[lnk_size] = '\0';
+
+			char buf[PATH_MAX];
+			get_lnk_path(buf, initial_name, link);
+			struct stat lnk_stat;
+			if (stat(buf, &lnk_stat) == -1)
+				forced = 1;
+			print_name(name, &lnk_stat, forced);
+		}
+		printf(" -> ");
+		forced = (forced == 1) ? 2 : 0;
+		print_name(link, s, forced);
+	}
+	else
+		print_name(name, s, 0);
+}
+
+static void print_not_colored(const char *name, const char *initial_name, const struct stat *s)
+{
+	if (S_ISLNK(s->st_mode))
+	{
+		char link[PATH_MAX];
+		ssize_t lnk_size = readlink(initial_name, link, PATH_MAX);
+		if (lnk_size == -1)
+		{
+			printf("\n");
+			perror("readlink");
+			return;
+		}
+		link[lnk_size] = '\0';
+		printf("%s -> %s", name, link);
+	}
+	else
+		printf("%s", name);
+}
+
 static void print_entry(const char *name, const struct stat *s, const conf_t *conf, struct cols col_conf, bool exact)
 {
 	const char *initial_name = name;
 	if (!exact)
 		name = ft_strrchr(name, '/') + 1;
+	if (conf->inode)
+		printf("%ld ", s->st_ino);
+
 	if (!conf->long_listing)
 	{
 		if (conf->tty)
 		{
-			static int col = 0;
-			printf("%-*s", col_conf.col_width, name);
-			col++;
-			if (col == col_conf.cols)
+			if (conf->color != COLOR_NEVER)
 			{
-				printf("\n");
-				col = 0;
+				static int col = 0;
+				printf("%-*s", col_conf.col_width, name);
+				col++;
+				if (col == col_conf.cols)
+				{
+					printf("\n");
+					col = 0;
+				}
 			}
+			else
+				printf("%-*s\n", col_conf.col_width, name);
 		}
-		else
+		else if (conf->color == COLOR_ALWAYS)
 		{
 			int forced = 0;
 			if (S_ISLNK(s->st_mode))
@@ -111,43 +217,23 @@ static void print_entry(const char *name, const struct stat *s, const conf_t *co
 			print_name(name, s, forced);
 			printf("\n");
 		}
+		else
+			printf("%s\n", name);
 		return;
 	}
 
-	if (conf->inode)
-		dprintf(1, "%ld ", s->st_ino);
-
 	print_perms(s->st_mode);
 	printf("%ld ", s->st_nlink);
-	print_user_group(s);
+
+	if ((!conf->no_group && !conf->no_owner) || conf->no_group != conf->no_owner)
+		print_user_group(conf, s);
 	printf("%ld ", s->st_size);
 	print_date(s->st_mtim);
 
-	if (S_ISLNK(s->st_mode))
-	{
-		int forced = 0;
-		char link[PATH_MAX];
-		ssize_t lnk_size = readlink(initial_name, link, PATH_MAX);
-		if (lnk_size == -1)
-		{
-			printf("\n");
-			perror("readlink");
-			return;
-		}
-		else
-		{
-			struct stat lnk_stat;
-			if (stat(link, &lnk_stat) == -1)
-				forced = 1;
-		}
-		link[lnk_size] = '\0';
-		print_name(name, s, forced);
-		printf(" -> ");
-		forced = (forced == 1) ? 2 : 0;
-		print_name(link, s, forced);
-	}
+	if (conf->color == COLOR_NEVER || (conf->color == COLOR_AUTO && !conf->tty))
+		print_not_colored(name, initial_name, s);
 	else
-		print_name(name, s, 0);
+		print_colored(name, initial_name, s);
 }
 
 static void print_queue(char *path, priority_queue_t *pq, const conf_t *conf)
@@ -165,7 +251,7 @@ static void print_queue(char *path, priority_queue_t *pq, const conf_t *conf)
 	{
 		char *arr[] = {path, name, NULL};
 		char *path = ft_strjoin_arr(arr, '/');
-		if (lstat(path, &s) == -1)
+		if (ft_stat_dispatcher(conf, path, &s) == -1)
 		{
 			perror(path);
 			free(path);
@@ -204,9 +290,9 @@ int print_dir(const conf_t *conf, entry_t *entry)
 {
 	if (conf->recursive)
 		printf("\n%s:\n", entry->name);
-	entry->d = opendir(entry->name);
+	DIR *d = opendir(entry->name);
 
-	if (!entry->d)
+	if (!d)
 	{
 		char *err = ft_strjoin("ft_ls: ", entry->name);
 		perror(err);
@@ -214,6 +300,8 @@ int print_dir(const conf_t *conf, entry_t *entry)
 
 		return 1;
 	}
+	if (conf->long_listing)
+		printf("Total %ld\n", entry->s->st_blocks);
 
 	int (*cmp)(const char *, const char *) = conf->reverse ? reverse_sort : ft_strcmp;
 	priority_queue_t *pq = priority_queue_new(cmp);
@@ -221,7 +309,7 @@ int print_dir(const conf_t *conf, entry_t *entry)
 	priority_queue_t *pq_dir = NULL;
 	if (conf->recursive)
 		pq_dir = priority_queue_new(cmp);
-	for (struct dirent *ent; (ent = readdir(entry->d));)
+	for (struct dirent *ent; (ent = readdir(d));)
 	{
 		if (ent->d_name[0] == '.' && !conf->all)
 			continue;
@@ -236,15 +324,16 @@ int print_dir(const conf_t *conf, entry_t *entry)
 
 	priority_queue_free(pq);
 	priority_queue_free(pq_dir);
-	closedir(entry->d);
 
+	closedir(d);
 	return 0;
 }
 
 int print_file(const conf_t *conf, entry_t *entry)
 {
 	struct stat s;
-	if (lstat(entry->name, &s) == -1)
+
+	if (ft_stat_dispatcher(conf, entry->name, &s) == -1)
 	{
 		perror(entry->name);
 		return 1;
