@@ -19,12 +19,23 @@ LIBFT_FLAGS			:=	SYS_ENDIAN=${SYS_ENDIAN}
 PATH_LIBFT			:=	libft
 LIBFT				:=	$(LIBFT_PATH)/libft.a
 
-CFLAGS				:=	-Wall -Werror -Wextra -g3 -ggdb -gdwarf-2 -fdiagnostics-color=always
+CFLAGS				:=	-Wall -Werror -Wextra -g3 -ggdb -gdwarf-2 -fdiagnostics-color=always -D_GNU_SOURCE
 LDFLAGS				:=	-L$(PATH_LIBFT) -lft
 
 # Sources that begin with an underscore are deprecated.
 
 BASENAME			:=	main.c							\
+						core/ft_ls.c					\
+						init_options.c					\
+						core/gettype.c					\
+						core/printer.c					\
+						core/colors.c					\
+						\
+						priority_queue/new.c			\
+						priority_queue/free.c			\
+						priority_queue/push.c			\
+						priority_queue/pop.c			\
+						priority_queue/heapify.c		\
 
 SRCS				:=	$(addprefix $(PATH_SRCS)/, $(BASENAME))
 OBJS				:=	$(addprefix $(PATH_OBJS)/, $(BASENAME:%.c=%.o))
@@ -192,10 +203,12 @@ $(LIBFT):
 
 clean:
 					$(RM) -r $(PATH_OBJS)
+					@make -s -C $(PATH_LIBFT) clean
 
 
 fclean:				clean
 					$(RM) $(NAME) woody
+					@make -s -C $(PATH_LIBFT) fclean
 
 re:					fclean all
 
