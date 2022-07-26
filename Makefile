@@ -29,13 +29,11 @@ BASENAME			:=	main.c							\
 						init_options.c					\
 						core/gettype.c					\
 						core/printer.c					\
+						core/cols.c						\
 						core/colors.c					\
 						\
-						priority_queue/new.c			\
-						priority_queue/free.c			\
-						priority_queue/push.c			\
-						priority_queue/pop.c			\
-						priority_queue/heapify.c		\
+						priority_queue/string.c			\
+						priority_queue/entry.c			\
 
 SRCS				:=	$(addprefix $(PATH_SRCS)/, $(BASENAME))
 OBJS				:=	$(addprefix $(PATH_OBJS)/, $(BASENAME:%.c=%.o))

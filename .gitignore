@@ -1,6 +1,7 @@
 .vscode
 objs
-ft_ssl
+ft_ls
 **.o
 **.a
 .gdb_history
+null.d

@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
+#include "priority_queue.h"
+
 typedef struct
 {
 	bool tty : 1;
@@ -22,6 +24,7 @@ typedef struct
 	bool dereference : 1;
 	bool inode : 1;
 	bool comma : 1; // Not implemented
+	bool size : 1;
 	enum
 	{
 		COLOR_ALWAYS = 0b00,
@@ -35,14 +38,27 @@ typedef struct
 
 typedef struct
 {
+	char *user;
+	uid_t uid;
+
+	char *group;
+	gid_t gid;
+} ug_t;
+
+
+typedef struct
+{
 	struct stat *s;
-	char *name;
+	char name[1024];
+
+	ug_t *ug;
+	char *date;
 } entry_t;
 
 typedef struct
 {
 	uint16_t inode;	 // Displayed only if -i is passed.
-	uint16_t blocks; // Displayed only if -s is passed (not implemented yet).
+	uint16_t blocks; // Displayed only if -s is passed.
 
 	// Displayed only if -l is passed.
 	uint16_t perms;
@@ -52,6 +68,14 @@ typedef struct
 	uint16_t size;
 	uint16_t date;
 	uint16_t name;
-} tab_long_listing_t;
+} __attribute__((packed)) tab_long_listing_t;
+
+union cols_u
+{
+	uint16_t *width;
+	tab_long_listing_t long_listing;
+};
+
+make_priority_queue(entry_t, entry)
 
 #endif

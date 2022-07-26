@@ -10,7 +10,10 @@
 
 int ft_dive_in(char *path, const conf_t *conf)
 {
-	entry_t entry = {.name = path};
+	entry_t entry;
+	ft_memset(&entry, 0, sizeof(entry_t));
+	ft_memcpy(entry.name, path, ft_strlen(path));
+
 	entry.s = ft_stat(path);
 
 	if (!entry.s)
@@ -91,6 +94,8 @@ int ft_ls(t_args *args, bool tty)
 	conf.no_group = args->flags & OPT_G;
 	conf.dereference = args->flags & OPT_L;
 	conf.inode = args->flags & OPT_i;
+	conf.comma = args->flags & OPT_m;
+	conf.size = args->flags & OPT_s;
 	conf.color = get_color(args);
 
 	ret = ft_list(&conf);

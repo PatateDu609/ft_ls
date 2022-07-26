@@ -21,6 +21,7 @@
 #define OPT_L 0x1000
 #define OPT_help 0x2000
 #define OPT_color 0x4000
+#define OPT_s 0x8000
 
 #define program_name program_invocation_short_name
 

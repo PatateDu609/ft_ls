@@ -14,4 +14,8 @@ int print_dir(const conf_t *conf, entry_t *entry);
 int print_file(const conf_t *conf, entry_t *entry);
 void print_name(const char *name, const struct stat *s, int forced);
 
+void setup_cols(const conf_t *conf, pq_entry_t *pq, ug_t *ug, char **dates);
+
+extern union cols_u cols;
+
 #endif

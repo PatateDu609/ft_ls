@@ -156,6 +156,16 @@ void init_color(t_option *option)
 	option->small_print = "Must be either 'never', 'always' or 'auto'.";
 }
 
+void init_s(t_option *option)
+{
+	option->name = "size";
+	option->short_name = 's';
+	option->description = "Print the allocated size of each file, in blocks.";
+	option->need_value = 0;
+	option->value = NULL;
+	option->flag = OPT_s;
+}
+
 t_option *init_options(int *nb)
 {
 	void (*fct[])(t_option * option) = {
@@ -173,6 +183,7 @@ t_option *init_options(int *nb)
 		init_r,
 		init_R,
 		init_t,
+		init_s,
 	};
 
 	*nb = sizeof(fct) / sizeof(fct[0]);
