@@ -94,8 +94,6 @@ static char *get_type(const struct stat *s)
 	return type;
 }
 
-#include <fcntl.h>
-
 void print_name(const char *name, const struct stat *s, int forced)
 {
 	char *ext = ft_strrchr(name, '.');

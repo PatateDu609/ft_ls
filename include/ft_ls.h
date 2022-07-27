@@ -16,6 +16,9 @@ void print_name(const char *name, const struct stat *s, int forced);
 
 void setup_cols(const conf_t *conf, pq_entry_t *pq, ug_t *ug, char **dates);
 
+void set_ug(ug_t *ug, const struct stat *s, const conf_t *conf);
+void set_date(char **date, struct timespec spec);
+
 extern union cols_u cols;
 
 #endif

@@ -53,7 +53,7 @@ static uint16_t uint64_len(uint64_t n)
 	return 19;
 }
 
-static void set_ug(ug_t *ug, const struct stat *s, const conf_t *conf)
+void set_ug(ug_t *ug, const struct stat *s, const conf_t *conf)
 {
 	if (!conf->no_owner)
 	{
@@ -69,7 +69,7 @@ static void set_ug(ug_t *ug, const struct stat *s, const conf_t *conf)
 	}
 }
 
-static void set_date(char **date, struct timespec spec)
+void set_date(char **date, struct timespec spec)
 {
 	time_t t;
 	time(&t);

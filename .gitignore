@@ -5,3 +5,4 @@ ft_ls
 **.a
 .gdb_history
 null.d
+*log

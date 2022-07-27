@@ -342,9 +342,9 @@ int print_dir(const conf_t *conf, entry_t *entry)
 	{
 		if (ent->d_name[0] == '.' && !conf->all)
 		{
-			if (conf->almost_all &&
+			if (!conf->almost_all || (conf->almost_all &&
 				(ft_strcmp(".", ent->d_name) == 0 ||
-				ft_strcmp("..", ent->d_name) == 0))
+				ft_strcmp("..", ent->d_name) == 0)))
 				continue;
 		}
 		if (conf->recursive && ent->d_type == DT_DIR)
@@ -381,7 +381,7 @@ int print_dir(const conf_t *conf, entry_t *entry)
 	closedir(d);
 
 	if (conf->long_listing)
-		printf("Total %ld\n", blks >> 1);
+		printf("total %ld\n", blks >> 1);
 
 	print_queue(entry->name, pq, conf);
 	pq_entry_free(pq);
@@ -401,7 +401,16 @@ int print_file(const conf_t *conf, entry_t *entry)
 		perror(entry->name);
 		return 1;
 	}
+	entry->ug = ft_calloc(1, sizeof *entry->ug);
+	set_ug(entry->ug, &s, conf);
+	set_date(&entry->date, s.st_mtim);
+
 	print_entry(entry, conf, (struct cols){0, 0}, true);
 	printf("\n");
+
+	free(entry->ug);
+	entry->ug = NULL;
+	free(entry->date);
+	entry->date = NULL;
 	return 0;
 }
