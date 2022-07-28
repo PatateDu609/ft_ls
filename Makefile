@@ -19,7 +19,7 @@ LIBFT_FLAGS			:=	SYS_ENDIAN=${SYS_ENDIAN}
 PATH_LIBFT			:=	libft
 LIBFT				:=	$(LIBFT_PATH)/libft.a
 
-CFLAGS				:=	-Wall -Werror -Wextra -g3 -ggdb -gdwarf-2 -fdiagnostics-color=always -D_GNU_SOURCE
+CFLAGS				:=	-Wall -Werror -Wextra -g3 -ggdb -gdwarf-2 -fdiagnostics-color=always -D_GNU_SOURCE -O2
 LDFLAGS				:=	-L$(PATH_LIBFT) -lft
 
 # Sources that begin with an underscore are deprecated.
@@ -31,9 +31,6 @@ BASENAME			:=	main.c							\
 						core/printer.c					\
 						core/cols.c						\
 						core/colors.c					\
-						\
-						priority_queue/string.c			\
-						priority_queue/entry.c			\
 
 SRCS				:=	$(addprefix $(PATH_SRCS)/, $(BASENAME))
 OBJS				:=	$(addprefix $(PATH_OBJS)/, $(BASENAME:%.c=%.o))

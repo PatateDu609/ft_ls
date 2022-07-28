@@ -3,7 +3,6 @@
 
 #include "ft_getopt.h"
 #include "structs.h"
-#include "priority_queue.h"
 #include <stdbool.h>
 
 int ft_ls(t_args *args, bool tty);

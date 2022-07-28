@@ -1,6 +1,9 @@
 #include "ft_ls.h"
 
 #include "defines.h"
+
+#define PQ_T char *
+#define PQ_NAME str
 #include "priority_queue.h"
 
 #include <sys/ioctl.h>

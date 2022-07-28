@@ -6,8 +6,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-#include "priority_queue.h"
-
 typedef struct
 {
 	bool tty : 1;
@@ -76,6 +74,8 @@ union cols_u
 	tab_long_listing_t long_listing;
 };
 
-make_priority_queue(entry_t, entry)
+#define PQ_T entry_t
+#define PQ_NAME entry
+#include "priority_queue.h"
 
 #endif

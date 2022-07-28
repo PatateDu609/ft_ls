@@ -1,4 +1,8 @@
+
+#define PQ_T char *
+#define PQ_NAME str
 #include "priority_queue.h"
+
 #include "ft_ls.h"
 #include <pwd.h>
 #include <grp.h>
@@ -8,14 +12,18 @@
 
 #include "sort_funcs.h"
 
+#include <fcntl.h>
+
 union cols_u cols;
 
 static inline void merge_path(char *target, size_t buf_size, const char *path, const char *name)
 {
 	if (path[0] == '\0' || ft_strcmp(path, "/") == 0)
 		snprintf(target, buf_size, "/%s", name);
-	else
+	else if (path[ft_strlen(path) - 1] != '/')
 		snprintf(target, buf_size, "%s/%s", path, name);
+	else
+		snprintf(target, buf_size, "%s%s", path, name);
 }
 
 void free_entry(entry_t entry)
@@ -94,6 +102,14 @@ static void print_user_group(ug_t *ug, const conf_t *conf)
 		printf("%*s ", cols.long_listing.group, ug->group);
 }
 
+// static char *get_link(const char *path)
+// {
+// 	char lnk[PATH_MAX];
+
+// 	if (readlink(path, lnk, PATH_MAX) == -1)
+// 		return NULL;
+// }
+
 static void print_colored(const char *basename, const char *path, const struct stat *s)
 {
 	if (S_ISLNK(s->st_mode))
@@ -136,7 +152,7 @@ static void print_not_colored(const char *basename, const char *path, const stru
 		if (lnk_size == -1)
 		{
 			printf("\n");
-			perror("readlink");
+			fprintf(stderr, "ft_ls: %s: %s\n", target, strerror(errno));
 			return;
 		}
 		link[lnk_size] = '\0';
@@ -155,7 +171,7 @@ static void print_entry(const entry_t *e, const conf_t *conf, struct cols col_co
 	if (path && !exact)
 	{
 		basename = path + 1;
-		path = ft_strndup(e->name, path - e->name);
+		path = ft_strndup(e->name, path - e->name + 1);
 	}
 
 	if (conf->inode)
@@ -222,6 +238,7 @@ static void print_entry(const entry_t *e, const conf_t *conf, struct cols col_co
 		print_not_colored(basename, path, e->s);
 	else
 		print_colored(basename, path, e->s);
+	free(path);
 }
 
 static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
@@ -232,13 +249,13 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 
 	if (conf->long_listing)
 	{
-		ug = ft_calloc(pq->nb, sizeof *ug);
+		ug = ft_calloc(pq->size, sizeof *ug);
 		if (!ug)
 		{
 			perror("ft_calloc");
 			exit(EXIT_FAILURE);
 		}
-		dates = ft_calloc(pq->nb, sizeof *dates);
+		dates = ft_calloc(pq->size, sizeof *dates);
 		if (!dates)
 		{
 			perror("ft_calloc");
@@ -254,14 +271,14 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 	}
 
 	dup->free_data = pq->free_data;
-	dup->nb = pq->nb;
-	dup->data = ft_calloc(dup->nb, sizeof *dup->data);
+	dup->size = pq->size;
+	dup->data = ft_calloc(dup->size, sizeof *dup->data);
 	if (!dup->data)
 	{
 		perror("ft_calloc");
 		exit(EXIT_FAILURE);
 	}
-	ft_memcpy(dup->data, pq->data, dup->nb * sizeof *dup->data);
+	ft_memcpy(dup->data, pq->data, dup->size * sizeof *dup->data);
 
 	entry_t entry;
 	setup_cols(conf, dup, ug, dates);
@@ -272,15 +289,21 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 		merge_path(p, sizeof p, path, entry.name);
 		ft_memcpy(entry.name, p, sizeof p);
 
-		entry.date = dates[i];
-		entry.ug = ug + i;
+		if (conf->long_listing)
+		{
+			entry.date = dates[i];
+			entry.ug = ug + i;
+		}
 		print_entry(&entry, conf, col_conf, false);
 
-		if (conf->long_listing || !pq->nb)
+		if (conf->long_listing || !pq->size)
 			printf("\n");
 
-		free(dates[i]);
-		free_entry(entry);
+		if (conf->long_listing)
+		{
+			free(dates[i]);
+			free_entry(entry);
+		}
 	}
 	free(dates);
 	free(ug);
@@ -291,21 +314,14 @@ static void print_dir_queue(char *path, pq_str_t *pq, const conf_t *conf)
 	char *name;
 	for (bool ret; (ret = pq_str_pop(pq, &name));)
 	{
-		char *arr[] = {path, name, NULL};
-		char *path = ft_strjoin_arr(arr, '/');
-		if (!path)
-		{
-			perror(path);
-			free(name);
-			exit(EXIT_FAILURE);
-		}
+		char p[2 * PATH_MAX] = {0};
+		merge_path(p, sizeof p, path, name);
 
-		ft_dive_in(path, conf);
-		free(path);
+		ft_dive_in(p, conf);
 	}
 }
 
-static compare_entry_fun *get_cmp_entry_fun(const conf_t *conf)
+static pq_entry_cmp_fun *get_cmp_entry_fun(const conf_t *conf)
 {
 	if (conf->reverse)
 		return reverse_sort;
@@ -327,7 +343,7 @@ int print_dir(const conf_t *conf, entry_t *entry)
 		return 1;
 	}
 
-	compare_entry_fun *cmp = get_cmp_entry_fun(conf);
+	pq_entry_cmp_fun *cmp = get_cmp_entry_fun(conf);
 	pq_entry_t *pq = pq_entry_new(cmp);
 	pq->free_data = &free_entry;
 	size_t blks = 0;
@@ -335,7 +351,7 @@ int print_dir(const conf_t *conf, entry_t *entry)
 	pq_str_t *pq_dir = NULL;
 	if (conf->recursive)
 	{
-		compare_str_fun *cmp_dir = conf->reverse ? reverse_str_sort : ft_strcmp;
+		pq_str_cmp_fun *cmp_dir = conf->reverse ? reverse_str_sort : ft_strcmp;
 		pq_dir = pq_str_new(cmp_dir);
 	}
 	for (struct dirent *ent; (ent = readdir(d));)
@@ -348,7 +364,10 @@ int print_dir(const conf_t *conf, entry_t *entry)
 				continue;
 		}
 		if (conf->recursive && ent->d_type == DT_DIR)
-			pq_str_push(pq_dir, ent->d_name);
+		{
+			if (ft_strcmp(".", ent->d_name) && ft_strcmp("..", ent->d_name))
+				pq_str_push(pq_dir, ent->d_name);
+		}
 
 		entry_t new_entry;
 		ft_memset(&new_entry, 0, sizeof(entry_t));
@@ -378,7 +397,6 @@ int print_dir(const conf_t *conf, entry_t *entry)
 
 		pq_entry_push(pq, new_entry);
 	}
-	closedir(d);
 
 	if (conf->long_listing)
 		printf("total %ld\n", blks >> 1);
@@ -389,6 +407,7 @@ int print_dir(const conf_t *conf, entry_t *entry)
 	if (conf->recursive)
 		print_dir_queue(entry->name, pq_dir, conf);
 	pq_str_free(pq_dir);
+	closedir(d); // Need to close the directory after the queue is used.
 	return 0;
 }
 
