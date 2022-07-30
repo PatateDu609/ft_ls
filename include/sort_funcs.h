@@ -10,14 +10,14 @@ static inline int name_sort(const entry_t a, const entry_t b)
 	return ft_strcmp(a.name, b.name);
 }
 
-static inline int reverse_sort(const entry_t a, const entry_t b)
+static inline int reverse_name_sort(const entry_t a, const entry_t b)
 {
 	return -name_sort(a, b);
 }
 
 static inline int reverse_str_sort(const char *a, const char *b)
 {
-	return (ft_strcmp(b, a));
+	return ft_strcmp(b, a);
 }
 
 static inline int time_sort(const entry_t a, const entry_t b)
@@ -33,6 +33,11 @@ static inline int time_sort(const entry_t a, const entry_t b)
 		return -1;
 
 	return name_sort(a, b);
+}
+
+static inline int reverse_time_sort(const entry_t a, const entry_t b)
+{
+	return -time_sort(a, b);
 }
 
 static inline int no_sort(__unused const entry_t a, __unused const entry_t b)

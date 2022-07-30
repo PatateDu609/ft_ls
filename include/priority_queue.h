@@ -75,10 +75,11 @@ PQ_LINKAGE void make_function_name(heapify)(PQ_STRUCT_TYPE *pq, size_t i)
 	size_t left = 2 * i + 1;
 	size_t right = 2 * i + 2;
 
-	if (left < pq->size && pq->cmp(pq->data[left], pq->data[largest]) > 0)
+	if (left < pq->size && pq->cmp(pq->data[left], pq->data[largest]) < 0)
 		largest = left;
-	if (right < pq->size && pq->cmp(pq->data[right], pq->data[largest]) > 0)
+	if (right < pq->size && pq->cmp(pq->data[right], pq->data[largest]) < 0)
 		largest = right;
+
 	if (largest != i)
 	{
 		make_function_name(swap)(&pq->data[i], &pq->data[largest]);
@@ -132,8 +133,8 @@ PQ_LINKAGE bool make_function_name(push)(PQ_STRUCT_TYPE *pq, PQ_T data)
 {
 	if (!pq->size)
 	{
-		pq->capacity = 1;
-		pq->data = malloc(pq->capacity * sizeof(PQ_T));
+		pq->capacity = 128;
+		pq->data = ft_calloc(pq->capacity, sizeof(PQ_T));
 
 		if (!pq->data)
 			return false;

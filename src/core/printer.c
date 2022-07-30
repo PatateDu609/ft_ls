@@ -31,6 +31,11 @@ void free_entry(entry_t entry)
 	free(entry.s);
 }
 
+void free_str(char *str)
+{
+	free(str);
+}
+
 static int ft_stat_dispatcher(const conf_t *conf, char *path, struct stat *s)
 {
 	if (!conf->dereference)
@@ -283,6 +288,7 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 	entry_t entry;
 	setup_cols(conf, dup, ug, dates);
 	int i = 0;
+	pq_entry_free(dup);
 	for (bool ret; (ret = pq_entry_pop(pq, &entry)); i++)
 	{
 		char p[2 * PATH_MAX] = {0};
@@ -309,6 +315,8 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 	free(ug);
 }
 
+// 7:57:00
+
 static void print_dir_queue(char *path, pq_str_t *pq, const conf_t *conf)
 {
 	char *name;
@@ -318,17 +326,16 @@ static void print_dir_queue(char *path, pq_str_t *pq, const conf_t *conf)
 		merge_path(p, sizeof p, path, name);
 
 		ft_dive_in(p, conf);
+		free(name);
 	}
 }
 
 static pq_entry_cmp_fun *get_cmp_entry_fun(const conf_t *conf)
 {
 	if (conf->reverse)
-		return reverse_sort;
-	else if (conf->time_sort)
-		return time_sort;
-	else
-		return name_sort;
+		return conf->time_sort ? reverse_time_sort : reverse_name_sort;
+
+	return conf->time_sort ? time_sort : name_sort;
 }
 
 int print_dir(const conf_t *conf, entry_t *entry)
@@ -353,6 +360,7 @@ int print_dir(const conf_t *conf, entry_t *entry)
 	{
 		pq_str_cmp_fun *cmp_dir = conf->reverse ? reverse_str_sort : ft_strcmp;
 		pq_dir = pq_str_new(cmp_dir);
+		pq_dir->free_data = free_str;
 	}
 	for (struct dirent *ent; (ent = readdir(d));)
 	{
@@ -366,7 +374,10 @@ int print_dir(const conf_t *conf, entry_t *entry)
 		if (conf->recursive && ent->d_type == DT_DIR)
 		{
 			if (ft_strcmp(".", ent->d_name) && ft_strcmp("..", ent->d_name))
-				pq_str_push(pq_dir, ent->d_name);
+			{
+				char *name = ft_strdup(ent->d_name);
+				pq_str_push(pq_dir, name);
+			}
 		}
 
 		entry_t new_entry;
@@ -397,6 +408,7 @@ int print_dir(const conf_t *conf, entry_t *entry)
 
 		pq_entry_push(pq, new_entry);
 	}
+	closedir(d);
 
 	if (conf->long_listing)
 		printf("total %ld\n", blks >> 1);
@@ -407,7 +419,6 @@ int print_dir(const conf_t *conf, entry_t *entry)
 	if (conf->recursive)
 		print_dir_queue(entry->name, pq_dir, conf);
 	pq_str_free(pq_dir);
-	closedir(d); // Need to close the directory after the queue is used.
 	return 0;
 }
 

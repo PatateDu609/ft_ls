@@ -6,3 +6,6 @@ ft_ls
 .gdb_history
 null.d
 *log
+
+callgrind*
+cachegrind*

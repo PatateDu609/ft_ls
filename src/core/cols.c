@@ -12,7 +12,7 @@ enum {
 
 __attribute__((pure))
 __attribute__((optimize("O3")))
-static uint16_t uint64_len(uint64_t n)
+static inline uint16_t uint64_len(uint64_t n)
 {
 	if (n < 10)
 		return 1;
@@ -111,5 +111,9 @@ void setup_cols(const conf_t *conf, pq_entry_t *pq, ug_t *ug, char **dates)
 		}
 
 		cols.long_listing = len;
+	}
+	else
+	{
+		__attribute_maybe_unused__ const int tty_width = conf->tty_width;
 	}
 }

@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <stdio.h>
+#include <stdio_ext.h>
+
 int ft_dive_in(char *path, const conf_t *conf)
 {
 	entry_t entry;
@@ -78,6 +81,7 @@ int get_color(t_args *args)
 
 int ft_ls(t_args *args, bool tty)
 {
+	__fsetlocking(stdout, FSETLOCKING_BYCALLER);
 	int ret = 0;
 	conf_t conf = {0};
 

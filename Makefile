@@ -19,7 +19,15 @@ LIBFT_FLAGS			:=	SYS_ENDIAN=${SYS_ENDIAN}
 PATH_LIBFT			:=	libft
 LIBFT				:=	$(LIBFT_PATH)/libft.a
 
-CFLAGS				:=	-Wall -Werror -Wextra -g3 -ggdb -gdwarf-2 -fdiagnostics-color=always -D_GNU_SOURCE -O2
+CFLAGS				:=	-Wall -Werror -Wextra		\
+						-fstack-protector-all		\
+						-g3							\
+						-ggdb						\
+						-gdwarf-2					\
+						-fdiagnostics-color=always	\
+						-D_GNU_SOURCE				\
+						-O2							\
+
 LDFLAGS				:=	-L$(PATH_LIBFT) -lft
 
 # Sources that begin with an underscore are deprecated.
