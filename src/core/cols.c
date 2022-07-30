@@ -3,6 +3,9 @@
 #include <grp.h>
 #include <time.h>
 
+#include <acl/libacl.h>
+#include <sys/xattr.h>
+
 enum {
 	ENTRY_UID,
 	ENTRY_GID,
@@ -87,7 +90,35 @@ void set_date(char **date, struct timespec spec)
 	*date = ft_strdup(d);
 }
 
-void setup_cols(const conf_t *conf, pq_entry_t *pq, ug_t *ug, char **dates)
+void set_axt(ACL_XATTR_t *axt, const char *name)
+{
+	char list[25];
+	if (listxattr(name, list, sizeof list) > 0)
+	{
+		*axt = XATTR;
+		return;
+	}
+
+	acl_t acl = acl_get_file(name, ACL_TYPE_DEFAULT);
+
+	if (acl == (acl_t)NULL)
+	{
+		*axt = NONE;
+		return;
+	}
+	acl_entry_t acl_entry;
+	if (acl_get_entry(acl, ACL_FIRST_ENTRY, &acl_entry) == -1)
+	{
+		*axt = NONE;
+		acl_free(acl);
+
+		return;
+	}
+	*axt = ACL;
+	acl_free(acl);
+}
+
+void setup_cols(const conf_t *conf, pq_entry_t *pq, ug_t *ug, char **dates, ACL_XATTR_t *axt)
 {
 	if (conf->long_listing)
 	{
@@ -98,10 +129,11 @@ void setup_cols(const conf_t *conf, pq_entry_t *pq, ug_t *ug, char **dates)
 		{
 			set_ug(ug + i, e.s, conf);
 			set_date(dates + i, e.s->st_mtim);
+			set_axt(axt + i, e.name);
 
 			len.inode = MAX(len.inode, uint64_len(e.s->st_ino));
 			len.blocks = MAX(len.blocks, uint64_len(e.s->st_blocks >> 1));
-			len.perms = 10; // Management of ACL and extended attributes is not implemented yet.
+			len.perms = 10 + (*axt != NONE);
 			len.links = MAX(len.links, uint64_len(e.s->st_nlink));
 			len.user = MAX(len.user, ft_strlen((ug + i)->user));
 			len.group = MAX(len.group, ft_strlen((ug + i)->group));

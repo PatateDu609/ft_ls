@@ -26,9 +26,9 @@ CFLAGS				:=	-Wall -Werror -Wextra		\
 						-gdwarf-2					\
 						-fdiagnostics-color=always	\
 						-D_GNU_SOURCE				\
-						-O2							\
+						-O0							\
 
-LDFLAGS				:=	-L$(PATH_LIBFT) -lft
+LDFLAGS				:=	-L$(PATH_LIBFT) -lft -lacl
 
 # Sources that begin with an underscore are deprecated.
 

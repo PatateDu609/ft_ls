@@ -50,51 +50,49 @@ struct cols
 	int col_width;
 };
 
-static void print_perms(mode_t mode)
+static void print_perms(mode_t mode, ACL_XATTR_t axt)
 {
 	char perms[12];
-	int i = 0;
 
 	if (S_ISDIR(mode))
-		perms[i] = 'd';
+		perms[0] = 'd';
 	else if (S_ISLNK(mode))
-		perms[i] = 'l';
+		perms[0] = 'l';
 	else if (S_ISCHR(mode))
-		perms[i] = 'c';
+		perms[0] = 'c';
 	else if (S_ISBLK(mode))
-		perms[i] = 'b';
+		perms[0] = 'b';
 	else if (S_ISFIFO(mode))
-		perms[i] = 'p';
+		perms[0] = 'p';
 	else if (S_ISSOCK(mode))
-		perms[i] = 's';
+		perms[0] = 's';
 	else if (S_ISREG(mode))
-		perms[i] = '-';
+		perms[0] = '-';
 	else
-		perms[i] = '?';
+		perms[0] = '?';
 
-	i++;
-
-	perms[i++] = (mode & S_IRUSR) ? 'r' : '-';
-	perms[i++] = (mode & S_IWUSR) ? 'w' : '-';
+	perms[1] = (mode & S_IRUSR) ? 'r' : '-';
+	perms[2] = (mode & S_IWUSR) ? 'w' : '-';
 	if (mode & S_ISUID)
-		perms[i++] = (mode & S_IXUSR) ? 's' : 'S';
+		perms[3] = (mode & S_IXUSR) ? 's' : 'S';
 	else
-		perms[i++] = (mode & S_IXUSR) ? 'x' : '-';
+		perms[3] = (mode & S_IXUSR) ? 'x' : '-';
 
-	perms[i++] = (mode & S_IRGRP) ? 'r' : '-';
-	perms[i++] = (mode & S_IWGRP) ? 'w' : '-';
+	perms[4] = (mode & S_IRGRP) ? 'r' : '-';
+	perms[5] = (mode & S_IWGRP) ? 'w' : '-';
 	if (mode & S_ISGID)
-		perms[i++] = (mode & S_IXGRP) ? 's' : 'S';
+		perms[6] = (mode & S_IXGRP) ? 's' : 'S';
 	else
-		perms[i++] = (mode & S_IXGRP) ? 'x' : '-';
+		perms[6] = (mode & S_IXGRP) ? 'x' : '-';
 
-	perms[i++] = (mode & S_IROTH) ? 'r' : '-';
-	perms[i++] = (mode & S_IWOTH) ? 'w' : '-';
+	perms[7] = (mode & S_IROTH) ? 'r' : '-';
+	perms[8] = (mode & S_IWOTH) ? 'w' : '-';
 	if (mode & S_ISVTX)
-		perms[i++] = (mode & S_IXOTH) ? 't' : 'T';
+		perms[9] = (mode & S_IXOTH) ? 't' : 'T';
 	else
-		perms[i++] = (mode & S_IXOTH) ? 'x' : '-';
-	perms[i] = '\0';
+		perms[9] = (mode & S_IXOTH) ? 'x' : '-';
+	perms[10] = axt;
+	perms[11] = '\0';
 
 	printf("%*s ", cols.long_listing.perms, perms);
 }
@@ -178,6 +176,8 @@ static void print_entry(const entry_t *e, const conf_t *conf, struct cols col_co
 		basename = path + 1;
 		path = ft_strndup(e->name, path - e->name + 1);
 	}
+	else if (path)
+		path = ft_strdup(path);
 
 	if (conf->inode)
 	{
@@ -231,7 +231,7 @@ static void print_entry(const entry_t *e, const conf_t *conf, struct cols col_co
 		return;
 	}
 
-	print_perms(e->s->st_mode);
+	print_perms(e->s->st_mode, e->acl_xattr);
 	printf("%*ld ", cols.long_listing.links, e->s->st_nlink);
 
 	if ((!conf->no_group && !conf->no_owner) || conf->no_group != conf->no_owner)
@@ -251,6 +251,7 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 	struct cols col_conf;
 	char **dates = NULL;
 	ug_t *ug = NULL;
+	ACL_XATTR_t *axts = NULL;
 
 	if (conf->long_listing)
 	{
@@ -266,6 +267,7 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 			perror("ft_calloc");
 			exit(EXIT_FAILURE);
 		}
+		axts = ft_calloc(pq->size, sizeof *axts);
 	}
 
 	pq_entry_t *dup = pq_entry_new(pq->cmp);
@@ -286,7 +288,7 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 	ft_memcpy(dup->data, pq->data, dup->size * sizeof *dup->data);
 
 	entry_t entry;
-	setup_cols(conf, dup, ug, dates);
+	setup_cols(conf, dup, ug, dates, axts);
 	int i = 0;
 	pq_entry_free(dup);
 	for (bool ret; (ret = pq_entry_pop(pq, &entry)); i++)
@@ -313,6 +315,7 @@ static void print_queue(char *path, pq_entry_t *pq, const conf_t *conf)
 	}
 	free(dates);
 	free(ug);
+	free(axts);
 }
 
 // 7:57:00
@@ -434,6 +437,7 @@ int print_file(const conf_t *conf, entry_t *entry)
 	entry->ug = ft_calloc(1, sizeof *entry->ug);
 	set_ug(entry->ug, &s, conf);
 	set_date(&entry->date, s.st_mtim);
+	set_axt(&entry->acl_xattr, entry->name);
 
 	print_entry(entry, conf, (struct cols){0, 0}, true);
 	printf("\n");

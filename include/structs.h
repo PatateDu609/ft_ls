@@ -34,6 +34,12 @@ typedef struct
 	size_t tty_width;
 } conf_t;
 
+typedef enum {
+	ACL = '+',
+	XATTR = '@',
+	NONE = '\0',
+} ACL_XATTR_t;
+
 typedef struct
 {
 	char *user;
@@ -51,6 +57,7 @@ typedef struct
 
 	ug_t *ug;
 	char *date;
+	ACL_XATTR_t acl_xattr;
 } entry_t;
 
 typedef struct
