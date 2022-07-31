@@ -92,12 +92,14 @@ void set_date(char **date, struct timespec spec)
 
 void set_axt(ACL_XATTR_t *axt, const char *name)
 {
+#ifndef __linux__
 	char list[25];
 	if (listxattr(name, list, sizeof list) > 0)
 	{
 		*axt = XATTR;
 		return;
 	}
+#endif
 
 	acl_t acl = acl_get_file(name, ACL_TYPE_DEFAULT);
 
